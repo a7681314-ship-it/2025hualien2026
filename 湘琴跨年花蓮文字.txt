@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>湘琴花蓮自駕行程 - 導遊小工具</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Inter 字體以符合簡約風格 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for aesthetic and minimalist icons -->
+    <script type="module">
+        import { createIcons, MapPin, Cloudy, Utensils, Home, Bus, Info, BookOpen } from 'https://unpkg.com/lucide@latest/dist/umd/lucide.js';
+        window.createIcons = createIcons;
+        window.MapPin = MapPin;
+        window.Cloudy = Cloudy;
+        window.Utensils = Utensils;
+        window.Home = Home;
+        window.Bus = Bus;
+        window.Info = Info;
+        window.BookOpen = BookOpen;
+    </script>
+    <style>
+        /* 日式極簡風格基礎 */
+        :root {
+            --color-primary: #52796F; /* 苔蘚綠/灰綠 */
+            --color-bg: #F9F9F9; /* 柔和米白 */
+            --color-card: #FFFFFF;
+            --color-text: #2F4858; /* 深灰藍 */
+            --color-accent-spot: #4A90E2; /* 景點藍 */
+            --color-accent-food: #F5A623; /* 食物黃 */
+            --color-accent-home: #8B5CF6; /* 住宿紫 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            padding-bottom: 70px; /* 留給底部導航 */
+            overflow-x: hidden;
+        }
+        /* 響應式手機框架 */
+        #app-container {
+            max-width: 450px; /* 模擬手機寬度 */
+            margin: 0 auto;
+            min-height: 100vh;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            background-color: var(--color-bg);
+        }
+        /* 標籤樣式 */
+        .tag-base {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .tag-must-eat { background-color: #fce3a3; color: #9c6c00; } /* 必吃美食 (淺黃/深黃字) */
+        .tag-must-order { background-color: #b0e0e6; color: #005f73; } /* 必點菜單 (淺藍/深藍字) */
+        .tag-must-buy { background-color: #c9e4a3; color: #386641; } /* 必買伴手禮 (淺綠/深綠字) */
+
+        /* 導航按鈕樣式 */
+        .nav-button {
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(82, 121, 111, 0.2);
+        }
+        .nav-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(82, 121, 111, 0.3);
+        }
+        /* Custom scrollbar for webkit (optional but nice) */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(82, 121, 111, 0.4);
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--color-bg);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- 頂部標題和導航欄 (Sticky Header) -->
+        <header class="sticky top-0 bg-white/95 backdrop-blur-sm shadow-md z-10 p-4 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-center text-gray-800">湘琴花蓮放鬆之旅</h1>
+            <p class="text-sm text-center text-gray-500 mt-1">日式極簡自駕導遊小工具</p>
+        </header>
+
+        <!-- 主要內容區塊 -->
+        <main class="p-4" id="content-area">
+            <!-- 行程分頁 (預設顯示) -->
+            <div id="itinerary-tab" class="active-tab">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700 border-l-4 border-primary pl-2">行程總覽</h2>
+                <div id="itinerary-list">
+                    <!-- 行程卡片將由 JS 注入 -->
+                </div>
+            </div>
+
+            <!-- 交通住宿分頁 (預設隱藏) -->
+            <div id="info-tab" class="hidden">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700 border-l-4 border-primary pl-2">交通與住宿資訊</h2>
+                <div class="space-y-6">
+                    <!-- 交通資訊 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center text-primary mb-3">
+                            <i data-lucide="bus" class="w-5 h-5 mr-2"></i>
+                            <h3 class="text-lg font-semibold text-gray-700">自駕交通提醒 (連假特別注意)</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            <span class="font-bold text-red-500">去程 (12/30 下午 2 點):</span> 預計車程 <span class="font-extrabold text-lg">5 小時</span>。出發前務必確認蘇花改路況，提早出發避開市區下班潮。
+                        </p>
+                        <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                            <span class="font-bold text-red-500">回程 (01/01 下午 3 點):</span> 北上車流高峰，預計車程 <span class="font-extrabold text-lg">4 小時</span>。請務必在 **3 點前** 離開飯店，以確保準時抵達土城。
+                        </p>
+                    </div>
+
+                    <!-- 住宿資訊 -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex items-center text-primary mb-3">
+                            <i data-lucide="home" class="w-5 h-5 mr-2"></i>
+                            <h3 class="text-lg font-semibold text-gray-700">住宿資訊</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 font-bold mb-2">花蓮煙波太魯閣沁海館</p>
+                        <ul class="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                            <li>地點：花蓮縣新城鄉，靠近曼波海灘。</li>
+                            <li>特色：無邊際泳池、水療設施、慢活早午餐。</li>
+                            <li>Check-in：12/30 晚間 7 點前。</li>
+                            <li>Check-out：01/01 中午時分。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 導遊功能彈窗 (Modal) -->
+            <div id="guide-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4" onclick="closeModal()">
+                <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-xl shadow-2xl p-6 overflow-y-auto transform transition-all duration-300 scale-95" onclick="event.stopPropagation()">
+                    <div class="flex justify-between items-start mb-4 border-b pb-2">
+                        <h3 class="text-xl font-bold text-primary flex items-center">
+                            <i data-lucide="book-open" class="w-6 h-6 mr-2"></i>
+                            AI 導遊分析
+                        </h3>
+                        <button class="text-gray-400 hover:text-gray-600" onclick="closeModal()">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <p id="modal-location" class="text-md font-semibold text-gray-600 mb-4"></p>
+                    <div id="modal-content" class="space-y-3 text-sm text-gray-700 leading-relaxed">
+                        <!-- 導遊分析內容將在此處顯示 -->
+                        <div id="modal-loading-indicator" class="text-center py-12 text-gray-400">
+                            <svg class="animate-spin h-8 w-8 text-primary mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p>AI 導遊正在努力查詢最新資訊，請稍候...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部導航欄 (Fixed Footer) -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 z-20">
+            <nav class="flex justify-around items-center h-16 max-w-md mx-auto">
+                <button id="nav-itinerary" class="nav-item active flex flex-col items-center p-2 text-primary">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                    <span class="text-xs mt-1">行程</span>
+                </button>
+                <button id="nav-info" class="nav-item flex flex-col items-center p-2 text-gray-500 hover:text-primary">
+                    <i data-lucide="info" class="w-5 h-5"></i>
+                    <span class="text-xs mt-1">資訊</span>
+                </button>
+            </nav>
+        </footer>
+    </div>
+
+    <script>
+        // --- 核心配置與湘琴的行程數據 (已替換) ---
+        const API_KEY = ""; // 留空，Canvas 會自動注入
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        
+        // **您的花蓮自駕行程數據，已從文字轉換為 JSON 格式**
+        const MOCK_ITINERARY_DATA = [
+            {
+                day: 1,
+                date: "12月30日 (一)",
+                theme: "啟程與飯店設施享受 (連假車潮預警)",
+                items: [
+                    { 
+                        type: "spot", 
+                        name: "台北雙連捷運站周邊出發", 
+                        description: "下午 2 點啟程。首日預計花費約 5 小時車程，請預留充足休息時間。", 
+                        location: "台北雙連捷運站" 
+                    },
+                    { 
+                        type: "accommodation", 
+                        name: "花蓮煙波太魯閣沁海館 (Check-in)", 
+                        description: "預計晚間 7 點抵達。舟車勞頓後準備休息。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "restaurant", 
+                        name: "飯店內晚餐", 
+                        description: "在沁海館內享用晚餐，方便且放鬆。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "spot", 
+                        name: "無邊際泳池與水療設施", 
+                        description: "利用沁海館設施消除舟車勞頓，享受放鬆時光。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    }
+                ]
+            },
+            {
+                day: 2,
+                date: "12月31日 (二)",
+                theme: "慢活海灘與跨年夜放鬆",
+                items: [
+                    { 
+                        type: "restaurant", 
+                        name: "沁海館慢活早午餐", 
+                        description: "睡到自然醒後，享受飯店提供的慢活早午餐。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "spot", 
+                        name: "曼波海灘 (療癒海邊時光)", 
+                        description: "步行可達，享受海邊療癒時光。點擊攻略按鈕可查詢海灘資訊。", 
+                        location: "曼波海灘, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "spot", 
+                        name: "新城文青咖啡館 / 飯店發呆亭", 
+                        description: "午後選擇：發呆亭休憩，或開車至附近文青咖啡館享受下午茶，避開人潮。", 
+                        location: "新城鄉" 
+                    },
+                    { 
+                        type: "restaurant", 
+                        name: "跨年夜豐盛晚餐", 
+                        description: "在飯店或周邊享用跨年夜大餐，準備迎接新年。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "accommodation", 
+                        name: "靜靜迎接 2026年元旦", 
+                        description: "在房間或飯店戶外平台，靜靜地迎接新的一年到來。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    }
+                ]
+            },
+            {
+                day: 3,
+                date: "01月01日 (三)",
+                theme: "設施享受與北上返程 (連假車潮預警)",
+                items: [
+                    { 
+                        type: "spot", 
+                        name: "再享沁海館設施", 
+                        description: "上午可再次享受飯店無邊際泳池、水療等設施。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "accommodation", 
+                        name: "飯店退房", 
+                        description: "中午時分辦理退房手續，準備啟程。", 
+                        location: "煙波太魯閣沁海館, 花蓮縣新城鄉" 
+                    },
+                    { 
+                        type: "spot", 
+                        name: "新城鄉啟程北上返家", 
+                        description: "務必在下午 3 點前從飯店啟程，預計行駛約 4 小時。目標晚間 7 點前抵達土城。", 
+                        location: "土城台北新貴社區" 
+                    }
+                ]
+            }
+        ];
+
+        // --- UI 輔助函數 ---
+
+        /**
+         * 根據行程類型返回對應的 Tailwind 樣式和 Lucide Icon
+         * @param {string} type - spot, restaurant, accommodation
+         */
+        function getItemStyle(type) {
+            switch (type) {
+                case 'spot':
+                    return {
+                        icon: 'MapPin',
+                        color: 'text-blue-500',
+                        bg: 'bg-blue-50'
+                    };
+                case 'restaurant':
+                    return {
+                        icon: 'Utensils',
+                        color: 'text-orange-500',
+                        bg: 'bg-orange-50'
+                    };
+                case 'accommodation':
+                    return {
+                        icon: 'Home',
+                        color: 'text-purple-500',
+                        bg: 'bg-purple-50'
+                    };
+                default:
+                    return {
+                        icon: 'Info',
+                        color: 'text-gray-500',
+                        bg: 'bg-gray-50'
+                    };
+            }
+        }
+
+        /**
+         * 打開 AI 導遊分析彈窗
+         * @param {string} locationName - 要查詢的地點名稱
+         */
+        async function openModal(locationName) {
+            const modal = document.getElementById('guide-modal');
+            const locationEl = document.getElementById('modal-location');
+            const contentEl = document.getElementById('modal-content');
+            const loadingEl = document.getElementById('modal-loading-indicator');
+
+            modal.classList.remove('hidden');
+            locationEl.textContent = `地點: ${locationName}`;
+            contentEl.innerHTML = loadingEl.outerHTML; // 顯示載入指示器
+
+            // 開始 LLM 查詢
+            try {
+                const guideText = await fetchGuideContent(locationName);
+                if (guideText) {
+                    contentEl.innerHTML = formatGuideText(guideText);
+                } else {
+                    contentEl.innerHTML = '<p class="text-red-500">抱歉，無法取得導遊資訊。請檢查網路或稍後再試。</p>';
+                }
+            } catch (error) {
+                console.error("LLM API error:", error);
+                contentEl.innerHTML = '<p class="text-red-500">查詢發生錯誤，請稍後再試。</p>';
+            }
+            // 重新渲染 Lucide 圖示
+            window.createIcons();
+        }
+
+        /**
+         * 關閉 AI 導遊分析彈窗
+         */
+        function closeModal() {
+            document.getElementById('guide-modal').classList.add('hidden');
+        }
+
+        /**
+         * 格式化導遊文字，將關鍵詞轉換為帶顏色標籤的 HTML
+         * @param {string} text - 從 LLM 取得的原始文字
+         * @returns {string} 格式化後的 HTML
+         */
+        function formatGuideText(text) {
+            // 定義要替換的關鍵詞和對應的標籤樣式
+            const replacements = {
+                '必吃美食': '<span class="tag-base tag-must-eat font-bold">必吃美食</span>',
+                '必點菜單': '<span class="tag-base tag-must-order font-bold">必點菜單</span>',
+                '必買伴手禮': '<span class="tag-base tag-must-buy font-bold">必買伴手禮</span>'
+            };
+
+            let formattedText = text;
+
+            // 執行替換
+            for (const [keyword, tag] of Object.entries(replacements)) {
+                // 使用正則表達式進行全域替換，確保不會替換到標籤本身
+                const regex = new RegExp(keyword, 'g');
+                formattedText = formattedText.replace(regex, tag);
+            }
+
+            // 將換行符 \n 替換為 HTML 段落
+            const paragraphs = formattedText.split('\n').filter(p => p.trim() !== '');
+            return paragraphs.map(p => `<p class="mb-3">${p}</p>`).join('');
+        }
+
+
+        // --- LLM API 互動邏輯 ---
+
+        /**
+         * 模擬獲取即時天氣資訊 (使用硬編碼數據)
+         * 實際應用中，此處應呼叫真實的天氣 API
+         * @param {string} locationName - 地點名稱
+         * @returns {Promise<{temp: string, description: string}>}
+         */
+        async function fetchMockWeather(locationName) {
+            // 根據地點名稱提供模擬天氣 (12月底/1月初)
+            if (locationName.includes("啟程")) {
+                return { temp: "18°C", description: "台北多雲，花蓮偏涼" };
+            } else if (locationName.includes("海灘")) {
+                return { temp: "21°C", description: "花蓮多雲時晴，海邊風大" };
+            } else if (locationName.includes("返程")) {
+                return { temp: "17°C", description: "北上轉涼，注意保暖" };
+            }
+            return { temp: "20°C", description: "晴朗，適合自駕" };
+        }
+
+
+        /**
+         * 呼叫 Gemini API 獲取導遊分析內容 (含 Google Search grounding)
+         * @param {string} locationName - 要查詢的地點名稱
+         * @returns {Promise<string>} 導遊分析文字
+         */
+        async function fetchGuideContent(locationName, retries = 3) {
+            const systemPrompt = "你是一位旅遊專家，專門為自駕遊旅客提供即時且實用的花蓮景點攻略。請根據提供的地點，簡短總結其故事、遊玩攻略，並特別搜尋並明確指出「必吃美食」、「必點菜單」和「必買伴手禮」。請使用繁體中文，並確保資訊來源於最新的Google搜尋結果。請以自然流暢的段落文字輸出，不要使用標題或列表。";
+            const userQuery = `請提供關於 ${locationName} 的旅遊故事、攻略、必吃美食、必點菜單和必買伴手禮資訊。`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API response status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        // Success
+                        return text;
+                    } else {
+                        throw new Error("Received empty or malformed text from API.");
+                    }
+
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed for ${locationName}:`, error);
+                    if (i < retries - 1) {
+                        // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                    }
+                }
+            }
+            return null; // Return null if all retries fail
+        }
+
+
+        // --- 行程渲染邏輯 ---
+
+        /**
+         * 渲染單一行程項目卡片
+         * @param {object} item - 行程項目數據
+         * @returns {string} HTML 字符串
+         */
+        function renderItineraryItem(item) {
+            const style = getItemStyle(item.type);
+            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`;
+
+            // 只有景點和餐廳提供攻略
+            const hasGuide = (item.type === 'spot' || item.type === 'restaurant') && !item.name.includes("飯店") && !item.name.includes("早午餐") && !item.name.includes("啟程");
+
+            return `
+                <div class="bg-card p-4 rounded-xl shadow-md transition duration-300 ease-in-out hover:shadow-lg border border-gray-100 ${style.bg} relative overflow-hidden">
+                    <div class="absolute top-0 right-0 h-full w-2 ${style.color.replace('text-', 'bg-')}"></div>
+                    
+                    <div class="flex items-start">
+                        <i data-lucide="${style.icon}" class="${style.color} w-5 h-5 flex-shrink-0 mt-1 mr-3"></i>
+                        <div class="flex-grow">
+                            <h4 class="text-lg font-semibold text-gray-800">${item.name}</h4>
+                            <p class="text-xs font-medium text-gray-500 mb-2">${item.type === 'spot' ? '景點/活動' : (item.type === 'restaurant' ? '餐飲' : (item.type === 'accommodation' ? '住宿/休息' : '其他'))}</p>
+                            <p class="text-sm text-gray-600 mb-4 leading-relaxed">${item.description}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-100">
+                        <!-- 導航按鈕 -->
+                        <a href="${mapUrl}" target="_blank" class="nav-button inline-flex items-center text-sm font-semibold text-white bg-primary py-2 px-4 rounded-full shadow-lg hover:bg-[#6c978e]">
+                            <i data-lucide="map-pin" class="w-4 h-4 mr-2"></i> 導航
+                        </a>
+                        <!-- AI 導遊按鈕 -->
+                        ${hasGuide ? `
+                            <button onclick="openModal('${item.name}')" class="text-sm font-medium text-primary hover:text-[#3d5a52] transition duration-150 flex items-center p-2 rounded-lg">
+                                <i data-lucide="book-open" class="w-4 h-4 mr-1"></i> 導遊攻略
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染每日行程卡片
+         * @param {object} dayData - 每日行程數據
+         * @returns {string} HTML 字符串
+         */
+        async function renderDailyItinerary(dayData) {
+            const weather = await fetchMockWeather(dayData.theme); // 模擬獲取天氣
+            const itemsHtml = dayData.items.map(renderItineraryItem).join('\n');
+
+            return `
+                <section id="day-${dayData.day}" class="mb-8 p-4 bg-white rounded-2xl shadow-lg border border-gray-100">
+                    <!-- 每日標題與天氣預報 -->
+                    <div class="mb-4 pb-2 border-b border-primary/20 flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-primary">Day ${dayData.day}</h3>
+                        <div class="text-sm text-gray-600 flex items-center">
+                            <span class="font-medium">${dayData.date}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center text-sm font-medium text-gray-700 bg-gray-50 p-3 rounded-lg mb-4">
+                        <i data-lucide="cloudy" class="w-4 h-4 text-primary mr-2 flex-shrink-0"></i>
+                        <span class="text-primary font-bold mr-2">即時天氣:</span>
+                        <span>${weather.temp} | ${weather.description}</span>
+                    </div>
+
+                    <p class="text-gray-600 text-base font-semibold mb-3 border-l-2 border-orange-500 pl-2">${dayData.theme}</p>
+
+                    <div class="space-y-4">
+                        ${itemsHtml}
+                    </div>
+                </section>
+            `;
+        }
+
+        /**
+         * 主渲染函數：將所有行程渲染到頁面
+         */
+        async function renderItinerary() {
+            const listElement = document.getElementById('itinerary-list');
+            const htmlPromises = MOCK_ITINERARY_DATA.map(renderDailyItinerary);
+            const dailyHtml = await Promise.all(htmlPromises);
+            listElement.innerHTML = dailyHtml.join('');
+
+            // 渲染 Lucide Icons
+            window.createIcons();
+        }
+
+        // --- 導航切換邏輯 ---
+
+        /**
+         * 處理底部導航欄的切換
+         * @param {string} targetTabId - 要顯示的 tab ID (e.g., 'itinerary-tab', 'info-tab')
+         */
+        function switchTab(targetTabId) {
+            const tabs = ['itinerary-tab', 'info-tab'];
+            tabs.forEach(id => {
+                const tab = document.getElementById(id);
+                const navBtn = document.getElementById(`nav-${id.replace('-tab', '')}`);
+                if (id === targetTabId) {
+                    tab.classList.remove('hidden');
+                    navBtn.classList.add('text-primary');
+                    navBtn.classList.remove('text-gray-500');
+                } else {
+                    tab.classList.add('hidden');
+                    navBtn.classList.remove('text-primary');
+                    navBtn.classList.add('text-gray-500');
+                }
+            });
+            // 滾動到頂部
+            document.getElementById('app-container').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+
+        // --- 初始化 ---
+
+        window.onload = function() {
+            // 渲染行程
+            renderItinerary();
+
+            // 設定導航事件監聽器
+            document.getElementById('nav-itinerary').addEventListener('click', () => switchTab('itinerary-tab'));
+            document.getElementById('nav-info').addEventListener('click', () => switchTab('info-tab'));
+
+            // 讓 openModal 和 closeModal 在全域可用
+            window.openModal = openModal;
+            window.closeModal = closeModal;
+            
+            // 初始化 Lucide Icons
+            window.createIcons();
+        };
+
+    </script>
+</body>
+</html>
+
